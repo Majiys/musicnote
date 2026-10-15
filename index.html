@@ -24,26 +24,42 @@ html,body{height:100%;margin:0;font-family:-apple-system,system-ui,sans-serif;co
 #main{flex:1;display:flex;min-width:0}
 #empty{margin:auto;color:var(--mut)}
 #editor{flex:1;display:flex;min-width:0;min-height:0}
-#col{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;position:relative}
-#head{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--line)}
-#title{flex:1;min-width:0;font-size:20px;font-weight:700;border:0;outline:0}
+#col{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
+#head{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--line)}
+#title{flex:1;min-width:0;font-size:20px;font-weight:700;border:0;outline:0;background:transparent}
 button,select{font-size:13px;padding:7px 4px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--fg)}
 button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
-#tools{width:122px;border-left:1px solid var(--line);padding:6px;overflow:auto;background:#f7f7f9}
-.g{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:8px}
+button.danger{color:#c62828;border-color:#e3b0b0}
+#tools{width:140px;border-left:1px solid var(--line);padding:2px 8px 10px;overflow:auto;background:#f7f7f9}
+#tools details{border-bottom:1px solid var(--line);padding-bottom:6px}
+#tools summary{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#555;padding:10px 2px;list-style:none;cursor:pointer}
+#tools summary::-webkit-details-marker{display:none}
+#tools summary::before{content:'\25B8';display:inline-block;width:14px}
+#tools details[open]>summary::before{content:'\25BE'}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:6px}
+.g .wide{grid-column:span 2}
 input[type=color]{width:100%;height:32px;border:1px solid var(--line);border-radius:8px;padding:2px;background:#fff}
-#bpm{width:100%;font-size:13px;padding:6px;border:1px solid var(--line);border-radius:8px}
+#bpm{width:100%;font-size:16px;padding:6px;border:1px solid var(--line);border-radius:8px}
+#bk{display:block;color:var(--mut);font-size:11px;line-height:1.3}
 #scroll{flex:1;overflow:auto;-webkit-overflow-scrolling:touch}
 #paper{position:relative}
 #cv{position:sticky;top:0;left:0;display:block;z-index:1;-webkit-user-select:none;-webkit-touch-callout:none}
-#toast{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:8px 14px;border-radius:10px;font-size:14px;z-index:6;pointer-events:none;white-space:nowrap}
-.tb{position:absolute;z-index:3;pointer-events:none;display:flex;align-items:flex-start}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:8px 14px;border-radius:10px;font-size:14px;z-index:30;pointer-events:none;max-width:90%;text-align:center}
+.tb{position:absolute;z-index:3;pointer-events:none;display:flex;align-items:flex-start;transform-origin:0 0}
 #paper.tmode .tb,#paper.smode .tb{pointer-events:auto}
 #paper.smode .tb:not(.editing){touch-action:none}
-.tx{min-width:40px;max-width:640px;min-height:1.3em;padding:2px 4px;outline:0;white-space:pre-wrap;line-height:1.3;border:1px dashed transparent;-webkit-user-select:text}
+.tx{display:block;width:220px;min-height:30px;padding:4px 6px;border:1px dashed transparent;border-radius:4px;background:transparent;font:16px/1.3 -apple-system,system-ui,sans-serif;color:#111;resize:none;overflow:hidden;outline:0;-webkit-appearance:none}
+.tx[readonly]{-webkit-user-select:none;user-select:none}
 #paper.tmode .tx,#paper.smode .tx{border-color:#bbb}
 .x{display:none;padding:0 6px;font-size:14px;line-height:1.2}
 #paper.tmode .x,#paper.smode .x{display:block}
+#modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:20}
+#modal .card{background:#fff;border-radius:14px;padding:18px;max-width:360px;width:90%}
+#modal h3{margin:0 0 8px;font-size:18px}
+#modal p{margin:0 0 14px;color:#444;font-size:15px;line-height:1.4}
+#modal .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+#modal button{font-size:15px;padding:9px 14px}
+#mOk{background:#c62828;color:#fff;border-color:#c62828}
 </style>
 </head>
 <body>
@@ -56,47 +72,82 @@ input[type=color]{width:100%;height:32px;border:1px solid var(--line);border-rad
     <div id="empty">Create a note to get started</div>
     <div id="editor" hidden>
       <div id="col">
-        <div id="head"><button id="tog" title="Notes list">&#9776;</button><input id="title" placeholder="Title"></div>
+        <div id="head">
+          <button id="tog" title="Notes list">&#9776;</button>
+          <input id="title" placeholder="Title" autocomplete="off" autocapitalize="words">
+          <button id="undo">Undo</button><button id="redo">Redo</button>
+        </div>
         <div id="scroll"><div id="paper"><canvas id="cv"></canvas></div></div>
-        <div id="toast" hidden></div>
       </div>
       <div id="tools">
-        <div class="g">
-          <button data-tool="pen" class="on">Pen</button><button data-tool="eraser">Erase</button>
-          <button data-tool="note">Note</button><button data-tool="rest">Rest</button>
-          <button data-tool="text">Text</button><button data-tool="box">&#9654; Box</button>
-          <button data-tool="select">Select</button><button data-tool="hand">Hand</button>
-          <button data-tool="time">Time sig</button><button id="stop">&#9632; Stop</button>
-        </div>
-        <div class="g">
-          <button data-d="4">Whole</button><button data-d="2">Half</button>
-          <button data-d="1" class="on">Qtr</button><button data-d="0.5">8th</button>
-          <button data-d="0.25">16th</button><span></span>
-          <button data-a="1">&#9839;</button><button data-a="-1">&#9837;</button>
-        </div>
-        <div class="g">
-          <button data-clef="treble">Treble</button><button data-clef="bass">Bass</button>
-          <button data-clef="alto">Alto</button><button data-clef="tenor">Tenor</button>
-          <select id="tsSel" style="grid-column:span 2"><option>2/4</option><option>3/4</option><option selected>4/4</option><option>5/4</option><option>2/2</option><option>3/8</option><option>6/8</option><option>9/8</option><option>12/8</option></select>
-        </div>
-        <div class="g"><input type="color" id="color" value="#111111"><select id="width"><option value="2">Thin</option><option value="3" selected>Med</option><option value="6">Thick</option></select></div>
-        <div class="g">
-          <button id="undo">Undo</button><button id="redo">Redo</button>
-          <button id="zout">&minus;</button><button id="zin">+</button>
-          <button id="zlbl">100%</button><button id="addpg">+ Page</button>
-          <button id="staffBtn" class="on">Staff</button><button id="del">Delete</button>
-        </div>
-        <input id="bpm" type="number" min="30" max="300" value="100" title="Tempo (BPM)">
+        <details open data-sec="draw"><summary>Draw</summary>
+          <div class="g">
+            <button data-tool="pen" class="on">Pen</button><button data-tool="eraser">Eraser</button>
+            <input type="color" id="color" value="#111111"><select id="width"><option value="2">Thin</option><option value="3" selected>Med</option><option value="6">Thick</option></select>
+          </div>
+        </details>
+        <details open data-sec="notes"><summary>Notation</summary>
+          <div class="g">
+            <button data-tool="note">Note</button><button data-tool="rest">Rest</button>
+            <button id="stackBtn" class="wide">Stack notes: off</button>
+            <button data-d="4">Whole</button><button data-d="2">Half</button>
+            <button data-d="1" class="on">Qtr</button><button data-d="0.5">8th</button>
+            <button data-d="0.25">16th</button><span></span>
+            <button data-a="1">&#9839;</button><button data-a="-1">&#9837;</button>
+          </div>
+        </details>
+        <details data-sec="clef"><summary>Clef &amp; time</summary>
+          <div class="g">
+            <button data-clef="treble">Treble</button><button data-clef="bass">Bass</button>
+            <button data-clef="alto">Alto</button><button data-clef="tenor">Tenor</button>
+            <select id="tsSel" class="wide"><option>2/4</option><option>3/4</option><option selected>4/4</option><option>5/4</option><option>2/2</option><option>3/8</option><option>6/8</option><option>9/8</option><option>12/8</option></select>
+            <button data-tool="time" class="wide">Place time sig</button>
+          </div>
+        </details>
+        <details data-sec="text"><summary>Text &amp; move</summary>
+          <div class="g">
+            <button data-tool="text">Text</button><button data-tool="select">Select</button>
+            <button data-tool="hand" class="wide">Hand (scroll)</button>
+          </div>
+        </details>
+        <details open data-sec="play"><summary>Playback</summary>
+          <div class="g">
+            <button data-tool="box">&#9654; Box</button><button id="stop">&#9632; Stop</button>
+          </div>
+          <input id="bpm" type="number" min="30" max="300" value="100" title="Tempo (BPM)">
+        </details>
+        <details data-sec="view"><summary>View</summary>
+          <div class="g">
+            <button id="zout">&minus;</button><button id="zin">+</button>
+            <button id="zlbl">100%</button><button id="addpg">+ Page</button>
+            <button id="staffBtn" class="wide on">Staff lines</button>
+          </div>
+        </details>
+        <details data-sec="files"><summary>Files &amp; backup</summary>
+          <div class="g">
+            <button id="expAll" class="wide">Export all notes</button>
+            <button id="expOne" class="wide">Export this note</button>
+            <button id="impBtn" class="wide">Import file</button>
+            <button id="del" class="wide danger">Delete note&hellip;</button>
+          </div>
+          <small id="bk"></small>
+        </details>
       </div>
     </div>
   </div>
 </div>
+<div id="toast" hidden></div>
+<div id="modal" hidden><div class="card">
+  <h3 id="mTitle"></h3><p id="mText"></p>
+  <div class="row"><button id="mCancel">Cancel</button><button id="mExport">Export first</button><button id="mOk">Delete</button></div>
+</div></div>
+<input type="file" id="impFile" accept=".json,.txt,application/json,text/plain" hidden>
 <script>
 const $=s=>document.querySelector(s),KEY='musicnotes.v1',P=140,ST=5,PW=1100,SX=74,RM=12,MPS=4;
 const PITCH=[0,2,4,5,7,9,11],BASE={treble:30,bass:18,alto:24,tenor:22};
 let sideHidden=false;try{sideHidden=localStorage.getItem('musicnotes.side')==='1'}catch(e){}
 let notes=[],cur=null,tool='pen',clefPick='treble',drag=null,live=null,timer=null,dur=1,acc=0,Z=1,drawId=null,pinch=null,pinchT=0,raf=0,toastT=0;
-let mv=null,lastTap={t:0,b:null},hl=new Set(),boxR=null,AC=null,master=null,tms=[],hist=[],redoS=[],eraseOp=null,LY=null,paperPW=PW;
+let mv=null,lastTap={t:0,b:null},hl=new Set(),boxR=null,AC=null,master=null,tms=[],hist=[],redoS=[],eraseOp=null,LY=null,paperPW=PW,stack=false,remind=true;
 const cv=$('#cv'),ctx=cv.getContext('2d'),sv=$('#scroll'),paper=$('#paper'),ptrs=new Map(),BB=new WeakMap(),tbs=[];
 const PH=()=>(cur&&cur.h)||5000,Y0=k=>100+k*P,fitZ=()=>Math.max(0.25,Math.min(1,sv.clientWidth/PW));
 function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,1800)}
@@ -152,6 +203,7 @@ function render(){
   if(!cur)return;
   $('#title').value=cur.title;$('#staffBtn').classList.toggle('on',cur.staff!==false);$('#bpm').value=cur.bpm||100;
   hist=[];redoS=[];stopPlay();paperPW=PW;Z=fitZ();sv.scrollTop=0;sv.scrollLeft=0;fit();renderTexts();
+  if(remind){remind=false;const lb=+localStorage.getItem('musicnotes.lastBackup')||0;if(Date.now()-lb>7*864e5)setTimeout(()=>toast('Tip: export a backup in Files & backup'),1500)}
 }
 
 /* ---------- items + history ---------- */
@@ -166,14 +218,18 @@ function undo(){
   const o=hist.pop();if(!o)return;
   if(o.t==='a'){const i=cur.items.indexOf(o.it);if(i>=0)cur.items.splice(i,1)}
   else if(o.t==='p')Object.assign(o.it,o.a);
-  else for(let j=o.rec.length-1;j>=0;j--)cur.items.splice(o.rec[j].i,0,o.rec[j].it);
+  else for(let j=o.rec.length-1;j>=0;j--){
+    const r=o.rec[j];
+    (r.pieces||[]).forEach(q=>{const k=cur.items.indexOf(q);if(k>=0)cur.items.splice(k,1)});
+    cur.items.splice(r.i,0,r.it);
+  }
   redoS.push(o);touch();renderTexts();
 }
 function redo(){
   const o=redoS.pop();if(!o)return;
   if(o.t==='a')cur.items.push(o.it);
   else if(o.t==='p')Object.assign(o.it,o.b);
-  else o.rec.forEach(r=>{const i=cur.items.indexOf(r.it);if(i>=0)cur.items.splice(i,1)});
+  else o.rec.forEach(r=>{const i=cur.items.indexOf(r.it);if(i>=0)cur.items.splice(i,1,...(r.pieces||[]))});
   hist.push(o);touch();renderTexts();
 }
 
@@ -422,7 +478,7 @@ function placeNote(p,sys,m,rest){
   if(d>c.cap+1e-6){toast('That note is longer than a '+mt.n+'/'+mt.d+' measure');return}
   const mine=cur.items.filter(i=>(i.k==='n'||i.k==='r')&&i.sys===sys&&i.m===m);
   // tapping directly on an existing note of the same length stacks a chord
-  if(!rest){
+  if(!rest&&stack){
     const col=mine.find(i=>i.k==='n'&&i.d===d&&Math.abs(itemX(i)-p[0])<=9);
     if(col){
       if(mine.some(i=>i.k==='n'&&i.t===col.t&&Math.abs(i.s-s)<=1)){toast('Chord notes need a gap between them');return}
@@ -454,31 +510,30 @@ function setSym(kind,sys,m){
   if(k==='m'&&LY.sysCells(sys).some(c=>c.ext>c.cap+1e-6))toast('Red measures hold more than this time signature allows');
 }
 
-/* ---------- text boxes ---------- */
-function posBox(b){b.w.style.left=b.it.x*Z+'px';b.w.style.top=b.it.y*Z+'px';b.t.style.fontSize=16*Z+'px'}
+/* ---------- text boxes (real <textarea>s so the iPad keyboard always opens) ---------- */
+function posBox(b){b.w.style.left=b.it.x*Z+'px';b.w.style.top=b.it.y*Z+'px';b.w.style.transform='scale('+Z+')'}
 function posBoxes(){tbs.forEach(posBox)}
-function setEdit(b,on){b.t.contentEditable=on?'true':'false';b.w.classList.toggle('editing',on)}
-function edit(b){
-  setEdit(b,true);b.t.focus();
-  const r=document.createRange();r.selectNodeContents(b.t);r.collapse(false);
-  const s=getSelection();s.removeAllRanges();s.addRange(r);
-}
+function grow(t){t.style.height='auto';t.style.height=t.scrollHeight+'px'}
+function setEdit(b,on){b.t.readOnly=!on;b.w.classList.toggle('editing',on)}
+function edit(b){setEdit(b,true);b.t.focus();const n=b.t.value.length;try{b.t.setSelectionRange(n,n)}catch(e){}}
 function mkBox(it,fresh){
   const w=document.createElement('div');w.className='tb';
-  const t=document.createElement('div');t.className='tx';t.textContent=it.t;
+  const t=document.createElement('textarea');t.className='tx';t.rows=1;t.value=it.t;
+  t.setAttribute('autocapitalize','sentences');
   const x=document.createElement('button');x.className='x';x.textContent='\u00D7';
   const b={it,w,t};
   const drop=()=>{w.remove();const i=tbs.indexOf(b);if(i>=0)tbs.splice(i,1)};
-  t.oninput=()=>{it.t=t.innerText;if(it.t.trim()&&!cur.items.includes(it))addItem(it);else saveSoon()};
-  t.onblur=()=>{
-    if(!t.innerText.trim()){if(cur.items.includes(it))delItems([it]);else drop();return}
+  t.oninput=()=>{it.t=t.value;grow(t);if(it.t.trim()&&!cur.items.includes(it))addItem(it);else saveSoon()};
+  t.onblur=()=>setTimeout(()=>{
+    if(document.activeElement===t||!cur)return;
+    if(!t.value.trim()){if(cur.items.includes(it))delItems([it]);else drop();return}
     if(tool!=='text')setEdit(b,false);
-  };
+  },250);
   x.onclick=()=>{if(cur.items.includes(it))delItems([it]);else drop()};
   // Select tool: drag to move, double-tap to edit
   w.addEventListener('pointerdown',e=>{
-    if(tool!=='select'||t.isContentEditable||e.target===x)return;
-    e.preventDefault();w.setPointerCapture(e.pointerId);
+    if(tool!=='select'||!t.readOnly||e.target===x)return;
+    w.setPointerCapture(e.pointerId);
     mv={b,id:e.pointerId,sx:e.clientX,sy:e.clientY,x0:it.x,y0:it.y,moved:false};
   });
   w.addEventListener('pointermove',e=>{
@@ -491,10 +546,11 @@ function mkBox(it,fresh){
     if(!mv||mv.b!==b)return;const m=mv;mv=null;
     if(m.moved){if(cur.items.includes(it)){hist.push({t:'p',it,a:{x:m.x0,y:m.y0},b:{x:it.x,y:it.y}});redoS=[];touch()}return}
     const now=Date.now();
-    if(lastTap.b===b&&now-lastTap.t<400){lastTap={t:0,b:null};edit(b)}else lastTap={t:now,b};
+    if(lastTap.b===b&&now-lastTap.t<400){lastTap={t:0,b:null};w._dbl=true;setEdit(b,true)}else lastTap={t:now,b};
   };
   w.addEventListener('pointerup',end);w.addEventListener('pointercancel',end);
-  w.append(t,x);paper.append(w);tbs.push(b);setEdit(b,tool==='text'||!!fresh);posBox(b);
+  w.addEventListener('click',()=>{if(w._dbl){w._dbl=false;edit(b)}});   // focus inside a real tap so the keyboard opens
+  w.append(t,x);paper.append(w);tbs.push(b);setEdit(b,tool==='text'||!!fresh);posBox(b);grow(t);
   if(fresh)t.focus();
 }
 function renderTexts(){
@@ -563,15 +619,41 @@ function pt(e){
     e.pointerType==='pen'&&e.pressure>0?Math.round(e.pressure*100)/100:0.5];
 }
 function hit(it,p,r){
-  if(it.k==='s')return it.p.some(q=>Math.hypot(q[0]-p[0],q[1]-p[1])<r);
-  if(it.k==='t')return false;
+  if(it.k==='s'||it.k==='t')return false;
   const q=pos(it);return Math.hypot(q[0]-p[0],q[1]-p[1])<r+(it.k==='c'||it.k==='m'?12:6);
+}
+function segD2(a,b,p){
+  const dx=b[0]-a[0],dy=b[1]-a[1],l=dx*dx+dy*dy;
+  let t=l?((p[0]-a[0])*dx+(p[1]-a[1])*dy)/l:0;t=Math.max(0,Math.min(1,t));
+  const x=a[0]+t*dx-p[0],y=a[1]+t*dy-p[1];return x*x+y*y;
+}
+// Cut the part of a stroke under the eraser out and keep the rest as separate strokes.
+function cutStroke(s,p,r){
+  const q=s.p,n=q.length,bad=new Array(n).fill(false),r2=r*r;let any=false;
+  for(let i=0;i<n;i++){
+    if((q[i][0]-p[0])**2+(q[i][1]-p[1])**2<r2){bad[i]=true;any=true}
+    else if(i>0&&segD2(q[i-1],q[i],p)<r2){bad[i]=bad[i-1]=true;any=true}
+  }
+  if(!any)return null;
+  const out=[];let run=[];
+  for(let i=0;i<=n;i++){
+    if(i<n&&!bad[i])run.push(q[i]);
+    else{if(run.length>1)out.push({k:'s',c:s.c,w:s.w,p:run});run=[]}
+  }
+  return out;
 }
 function erase(p){
   LY=buildLayout();
-  const r=14/Z;let n=0;
-  for(let i=cur.items.length-1;i>=0;i--)if(hit(cur.items[i],p,r)){eraseOp.push({i,it:cur.items.splice(i,1)[0]});n++}
-  if(n){redraw();cur.t=Date.now();saveSoon()}
+  const r=(8+(+$('#width').value)*2)/Z,rn=14/Z;let ch=false;
+  for(let i=cur.items.length-1;i>=0;i--){
+    const it=cur.items[i];
+    if(it.k==='s'){
+      const b=box(it);if(p[0]<b[0]-r||p[0]>b[2]+r||p[1]<b[1]-r||p[1]>b[3]+r)continue;
+      const pcs=cutStroke(it,p,r);if(!pcs)continue;
+      cur.items.splice(i,1,...pcs);eraseOp.push({i,it,pieces:pcs});ch=true;
+    }else if(hit(it,p,rn)){eraseOp.push({i,it:cur.items.splice(i,1)[0]});ch=true}
+  }
+  if(ch){redraw();cur.t=Date.now();saveSoon()}
 }
 function two(){const[a,b]=[...ptrs.values()];return{d:Math.hypot(a.x-b.x,a.y-b.y)||1,x:(a.x+b.x)/2,y:(a.y+b.y)/2}}
 function cancelDrag(){
@@ -657,13 +739,76 @@ $('#undo').onclick=undo;$('#redo').onclick=redo;
 $('#zin').onclick=()=>setZoom(Z*1.25);$('#zout').onclick=()=>setZoom(Z/1.25);$('#zlbl').onclick=()=>setZoom(fitZ());
 $('#addpg').onclick=()=>{cur.h=PH()+1600;sizePaper();redraw();save()};
 $('#staffBtn').onclick=()=>{cur.staff=cur.staff===false;$('#staffBtn').classList.toggle('on',cur.staff!==false);redraw();save()};
-$('#del').onclick=()=>{if(confirm('Delete this note?')){notes=notes.filter(n=>n!==cur);cur=null;save();render()}};
 $('#tog').onclick=()=>{sideHidden=!sideHidden;try{localStorage.setItem('musicnotes.side',sideHidden?'1':'0')}catch(e){}$('#app').classList.toggle('noside',sideHidden);fit()};
 addEventListener('resize',()=>{if(cur)fit()});
 addEventListener('pagehide',save);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)save()});
 
-load();render();
+/* ---------- collapsible menu sections ---------- */
+let sec={};try{sec=JSON.parse(localStorage.getItem('musicnotes.sec'))||{}}catch(e){}
+document.querySelectorAll('#tools details').forEach(d=>{
+  const k=d.dataset.sec;if(k in sec)d.open=sec[k];
+  d.addEventListener('toggle',()=>{sec[k]=d.open;try{localStorage.setItem('musicnotes.sec',JSON.stringify(sec))}catch(e){}});
+});
+$('#stackBtn').onclick=e=>{stack=!stack;e.target.classList.toggle('on',stack);e.target.textContent='Stack notes: '+(stack?'on':'off')};
+
+/* ---------- files: export / import / delete warning ---------- */
+const stamp=()=>new Date().toISOString().slice(0,10);
+function updateBk(){
+  const t=+localStorage.getItem('musicnotes.lastBackup')||0;
+  $('#bk').textContent=t?'Last backup: '+new Date(t).toLocaleDateString():'No backup yet. Export to the Files app to keep your notes safe.';
+}
+async function saveFile(name,text){
+  const tries=[[name,'application/json'],[name.replace(/\.json$/,'.txt'),'text/plain']];
+  for(const[n,type]of tries){
+    try{
+      const f=new File([text],n,{type});
+      if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:n});return true}
+    }catch(e){if(e&&e.name==='AbortError')return false}
+  }
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'application/json'}));a.download=name;
+  document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000);return true;
+}
+const pack=list=>JSON.stringify({app:'music-notes',v:1,exported:new Date().toISOString(),notes:list});
+async function exportAll(){
+  if(!notes.length){toast('No notes to export yet');return}
+  if(await saveFile('music-notes-backup-'+stamp()+'.json',pack(notes))){try{localStorage.setItem('musicnotes.lastBackup',Date.now())}catch(e){}updateBk()}
+}
+async function exportNote(){
+  if(!cur)return;save();
+  const nm=((cur.title||'note').replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'-')||'note');
+  await saveFile(nm+'-'+stamp()+'.json',pack([cur]));
+}
+$('#expAll').onclick=exportAll;$('#expOne').onclick=exportNote;
+$('#impBtn').onclick=()=>$('#impFile').click();
+$('#impFile').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{
+    const data=JSON.parse(await f.text()),list=Array.isArray(data)?data:data.notes;
+    if(!Array.isArray(list))throw 0;
+    let n=0;
+    list.forEach(x=>{
+      if(!x||typeof x!=='object'||!x.id)return;
+      migrate(x);if(!x.items)return;
+      const i=notes.findIndex(o=>o.id===x.id);
+      if(i<0){notes.push(x);n++}
+      else if((x.t||0)>(notes[i].t||0)){if(cur===notes[i])cur=x;notes[i]=x;n++}
+    });
+    save();render();toast(n?'Imported '+n+' note'+(n>1?'s':''):'Nothing new to import');
+  }catch(err){toast('That file is not a Music Notes backup')}
+};
+$('#del').onclick=()=>{
+  if(!cur)return;
+  $('#mTitle').textContent='Delete \u201C'+(cur.title||'Untitled')+'\u201D?';
+  $('#mText').textContent='This permanently deletes the whole page, including every drawing, note, rest and text box on it. This can\u2019t be undone.';
+  $('#modal').hidden=false;
+};
+$('#mCancel').onclick=()=>{$('#modal').hidden=true};
+$('#mExport').onclick=exportNote;
+$('#mOk').onclick=()=>{$('#modal').hidden=true;notes=notes.filter(n=>n!==cur);cur=null;save();render()};
+try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
+
+load();render();updateBk();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
